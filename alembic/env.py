@@ -71,9 +71,13 @@ async def run_async_migrations() -> None:
     and associate a connection with the context.
 
     """
+    
+    # Явно указываем asyncpg драйвер
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = settings.database_url
 
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
