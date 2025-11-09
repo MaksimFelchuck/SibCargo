@@ -1,5 +1,6 @@
 """Alembic environment configuration."""
 import asyncio
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -18,7 +19,16 @@ from app.config import settings
 config = context.config
 
 # Переопределяем URL из настроек приложения
-config.set_main_option("sqlalchemy.url", settings.database_url)
+database_url = settings.database_url
+
+# ВАЖНО: Проверяем и исправляем URL если нужно
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    print(f"⚠️  WARNING: DATABASE_URL was converted to use asyncpg driver", file=sys.stderr)
+
+print(f"🔍 Using DATABASE_URL: {database_url[:50]}...", file=sys.stderr)
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -74,7 +84,9 @@ async def run_async_migrations() -> None:
     
     # Явно указываем asyncpg драйвер
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.database_url
+    
+    # Используем уже исправленный database_url из глобальной области
+    configuration["sqlalchemy.url"] = database_url
 
     connectable = async_engine_from_config(
         configuration,
